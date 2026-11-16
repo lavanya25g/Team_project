@@ -18,6 +18,10 @@ def create_multiplier(factor):
     return multiply
 
 
+def calculate_total(price, quantity=1, discount=0):
+    return (price * quantity) - discount
+
+
 class TestSerializer(unittest.TestCase):
 
     def test_normal_function(self):
@@ -41,6 +45,19 @@ class TestSerializer(unittest.TestCase):
         restored = deserialize_function(serialized)
 
         self.assertEqual(restored(4), 20)
+
+    def test_default_and_keyword_arguments(self):
+        serialized = serialize_function(calculate_total)
+        restored = deserialize_function(serialized)
+
+        self.assertEqual(restored(100), 100)
+
+        self.assertEqual(
+            restored(price=100, quantity=2, discount=20),
+            180
+        )
+
+        self.assertIsInstance(serialized, bytes)
 
     def test_invalid_function(self):
         with self.assertRaises(TypeError):
