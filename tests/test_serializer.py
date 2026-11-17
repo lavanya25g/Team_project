@@ -7,10 +7,12 @@ from serialization import (
 )
 
 
+# Normal function
 def add(a, b):
     return a + b
 
 
+# Closure function
 def create_multiplier(factor):
     def multiply(number):
         return number * factor
@@ -18,8 +20,20 @@ def create_multiplier(factor):
     return multiply
 
 
+# Function with default and keyword arguments
 def calculate_total(price, quantity=1, discount=0):
     return (price * quantity) - discount
+
+
+# Recursive function
+def factorial(number):
+    if number < 0:
+        raise ValueError("Number must be non-negative")
+
+    if number in (0, 1):
+        return 1
+
+    return number * factorial(number - 1)
 
 
 class TestSerializer(unittest.TestCase):
@@ -58,6 +72,17 @@ class TestSerializer(unittest.TestCase):
         )
 
         self.assertIsInstance(serialized, bytes)
+
+    def test_recursive_function(self):
+        serialized = serialize_function(factorial)
+        restored = deserialize_function(serialized)
+
+        self.assertEqual(restored(5), 120)
+        self.assertEqual(restored(0), 1)
+        self.assertEqual(restored(1), 1)
+
+        with self.assertRaises(ValueError):
+            restored(-1)
 
     def test_invalid_function(self):
         with self.assertRaises(TypeError):
