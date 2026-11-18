@@ -36,6 +36,14 @@ def factorial(number):
     return number * factorial(number - 1)
 
 
+# Function with variable-length arguments
+def flexible_sum(*numbers, multiplier=1, **options):
+    total = sum(numbers)
+    bonus = options.get("bonus", 0)
+
+    return (total * multiplier) + bonus
+
+
 class TestSerializer(unittest.TestCase):
 
     def test_normal_function(self):
@@ -83,6 +91,19 @@ class TestSerializer(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             restored(-1)
+
+    def test_variable_length_arguments(self):
+        serialized = serialize_function(flexible_sum)
+        restored = deserialize_function(serialized)
+
+        self.assertEqual(restored(1, 2, 3), 6)
+
+        self.assertEqual(
+            restored(1, 2, 3, multiplier=2, bonus=5),
+            17
+        )
+
+        self.assertEqual(restored(multiplier=3), 0)
 
     def test_invalid_function(self):
         with self.assertRaises(TypeError):
