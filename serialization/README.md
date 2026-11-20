@@ -41,12 +41,20 @@ print(result)  # Output: 30
 
 ## Running Tests
 
-From the project root directory:
+## Test Coverage
 
-```bash
-python -m unittest discover -s tests -v
-```
+The module includes tests for:
 
+- Normal Python functions.
+- Lambda functions.
+- Closure functions.
+- Default and keyword arguments.
+- Recursive functions.
+- Variable-length arguments (*args and **kwargs).
+- Invalid function inputs.
+- Invalid input types.
+- Invalid serialized data.
+- Non-callable deserialized objects.
 ## Security Warning
 
 Only deserialize data received from trusted sources.

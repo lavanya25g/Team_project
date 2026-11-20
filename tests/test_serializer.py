@@ -1,4 +1,5 @@
 import unittest
+import cloudpickle
 
 from serialization import (
     serialize_function,
@@ -116,6 +117,12 @@ class TestSerializer(unittest.TestCase):
     def test_invalid_serialized_data(self):
         with self.assertRaises(DeserializationError):
             deserialize_function(b"invalid data")
+
+    def test_deserialized_non_callable_object(self):
+        serialized_data = cloudpickle.dumps(123)
+
+        with self.assertRaises(DeserializationError):
+            deserialize_function(serialized_data)
 
 
 if __name__ == "__main__":
