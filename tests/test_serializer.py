@@ -45,6 +45,15 @@ def flexible_sum(*numbers, multiplier=1, **options):
     return (total * multiplier) + bonus
 
 
+# Function with keyword-only arguments
+def create_user_profile(name, *, role, active=True):
+    return {
+        "name": name,
+        "role": role,
+        "active": active
+    }
+
+
 class TestSerializer(unittest.TestCase):
 
     def test_normal_function(self):
@@ -105,6 +114,36 @@ class TestSerializer(unittest.TestCase):
         )
 
         self.assertEqual(restored(multiplier=3), 0)
+
+    def test_keyword_only_arguments(self):
+        serialized = serialize_function(create_user_profile)
+        restored = deserialize_function(serialized)
+
+        result1 = restored("Alex", role="Developer")
+
+        self.assertEqual(
+            result1,
+            {
+                "name": "Alex",
+                "role": "Developer",
+                "active": True
+            }
+        )
+
+        result2 = restored(
+            "John",
+            role="Student",
+            active=False
+        )
+
+        self.assertEqual(
+            result2,
+            {
+                "name": "John",
+                "role": "Student",
+                "active": False
+            }
+        )
 
     def test_invalid_function(self):
         with self.assertRaises(TypeError):
