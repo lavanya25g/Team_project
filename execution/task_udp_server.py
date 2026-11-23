@@ -1,42 +1,109 @@
-"""Small UDP worker endpoint for TASK_SUBMIT messages.
-
-It follows Lavanya's JSON message envelope and can be replaced by a callback
-inside networking.server. It does not modify or duplicate the DHT component.
-"""
+"""UDP worker with authenticated task handling and duplicate protection."""
 
 import asyncio
 import json
+from collections import OrderedDict
 from typing import Optional
 
 from .task_handler import handle_task_message
+from .task_codec import verify_payload
 
 
 class UDPTaskServer(asyncio.DatagramProtocol):
-    def __init__(self, shared_secret: str, receiver_id: str = "meshweaver-worker"):
+
+    def __init__(
+        self,
+        shared_secret: str,
+        receiver_id: str = "meshweaver-worker",
+        max_cached_responses: int = 1000
+    ):
         if not isinstance(shared_secret, str) or len(shared_secret) < 16:
             raise ValueError("Shared secret must contain at least 16 characters.")
+
+        if (
+            isinstance(max_cached_responses, bool)
+            or not isinstance(max_cached_responses, int)
+            or max_cached_responses <= 0
+        ):
+            raise ValueError("Cache size must be a positive integer.")
+
         self.shared_secret = shared_secret
         self.receiver_id = receiver_id
+        self.max_cached_responses = max_cached_responses
+
+        self.response_cache = OrderedDict()
         self.transport = None
 
     def connection_made(self, transport):
         self.transport = transport
-        print(f"MeshWeaver task worker listening at {transport.get_extra_info('sockname')}")
+
+        address = transport.get_extra_info("sockname")
+
+        print(f"MeshWeaver task worker listening at {address}")
 
     def datagram_received(self, data: bytes, addr):
+
         try:
             message = json.loads(data.decode("utf-8"))
+
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            print(f"Rejected malformed UDP message from {addr}: {error}")
+            return
+
+        cache_key = None
+        payload = message.get("payload") if isinstance(message, dict) else None
+
+        # Authenticate before using the cache or processing serialized data.
+        if (
+            isinstance(message, dict)
+            and message.get("message_type") == "TASK_SUBMIT"
+            and isinstance(payload, dict)
+        ):
+            task_id = payload.get("task_id")
+            signature = payload.get("signature")
+
+            if (
+                isinstance(task_id, str)
+                and task_id
+                and verify_payload(payload, self.shared_secret)
+            ):
+                cache_key = (task_id, signature)
+
+                cached_response = self.response_cache.get(cache_key)
+
+                if cached_response is not None:
+                    print(f"Duplicate task detected: {task_id}")
+
+                    self.response_cache.move_to_end(cache_key)
+
+                    self.transport.sendto(
+                        json.dumps(cached_response).encode("utf-8"),
+                        addr
+                    )
+
+                    return
+
+        try:
             response = handle_task_message(
                 message,
                 shared_secret=self.shared_secret,
-                receiver_id=self.receiver_id,
+                receiver_id=self.receiver_id
             )
+
             self.transport.sendto(
                 json.dumps(response).encode("utf-8"),
-                addr,
+                addr
             )
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as error:
-            print(f"Rejected malformed UDP task message from {addr}: {error}")
+
+            # Cache authenticated task responses.
+            if cache_key is not None:
+                self.response_cache[cache_key] = response
+                self.response_cache.move_to_end(cache_key)
+
+                # Prevent unlimited memory growth.
+                while len(self.response_cache) > self.max_cached_responses:
+                    self.response_cache.popitem(last=False)
+
         except Exception as error:
             print(f"UDP task worker error from {addr}: {error}")
 
@@ -48,17 +115,21 @@ async def start_task_server(
     host: str = "127.0.0.1",
     port: int = 9998,
     shared_secret: Optional[str] = None,
-    receiver_id: str = "meshweaver-worker",
+    receiver_id: str = "meshweaver-worker"
 ):
-    """Start the task worker. Use a private network and trusted peers only."""
+
     if shared_secret is None:
-        raise ValueError("A shared_secret is required to start the task worker.")
+        raise ValueError("A shared_secret is required.")
+
     loop = asyncio.get_running_loop()
+
     transport, _protocol = await loop.create_datagram_endpoint(
         lambda: UDPTaskServer(shared_secret, receiver_id),
-        local_addr=(host, port),
+        local_addr=(host, port)
     )
+
     try:
         await asyncio.Future()
+
     finally:
         transport.close()
