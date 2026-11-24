@@ -25,6 +25,7 @@ The planned system includes:
 - **Message Format:** JSON
 - **Peer Discovery:** Distributed Hash Table (DHT)
 - **Serialization:** Cloudpickle (planned integration)
+- **Resource Monitoring:** psutil
 - **Version Control:** Git and GitHub
 
 ## Project Structure
@@ -39,7 +40,13 @@ MeshWeaver/
 │   ├── server.py
 │   └── client.py
 │
+├── monitoring/
+│   ├── __init__.py
+│   └── resource_monitor.py
+│
 ├── test_protocol.py
+├── test_resource_monitor.py
+├── requirements.txt
 ├── .gitignore
 └── README.md
 ```
@@ -55,7 +62,7 @@ MeshWeaver/
 | Peer Discovery and DHT | In Development |
 | Function Serialization | In Development |
 | Remote Function Execution | In Development |
-| CPU/RAM Monitoring | In Development |
+| CPU/RAM Monitoring | Implemented (standalone) |
 | Heartbeat and Gossip | In Development |
 | Resource-Aware Task Scheduling | In Development |
 | Main System Integration | Pending |
@@ -72,6 +79,12 @@ MeshWeaver/
 ```bash
 git clone https://github.com/lavanya25g/Team_project.git
 cd Team_project
+```
+
+### Install Dependencies
+
+```bash
+py -m pip install -r requirements.txt
 ```
 
 ### Start the UDP Server
@@ -94,7 +107,17 @@ py -m networking.client
 
 The client sends a PING message and waits for a PONG response from the server.
 
-**Note:** The current default configuration is intended for local testing. Communication between different machines will require appropriate network host and port configuration.
+### Run Resource Monitoring
+
+```bash
+py -m monitoring.resource_monitor
+```
+
+The resource monitor displays local CPU and RAM usage at approximately five-second intervals.
+
+Press `Ctrl + C` to stop monitoring.
+
+**Note:** The current default networking configuration is intended for local testing. Communication between different machines will require appropriate network host and port configuration.
 
 ## Message Protocol
 
@@ -104,12 +127,12 @@ Example:
 
 ```json
 {
-  "message_id": "unique-uuid",
-  "sender_id": "peer_1",
-  "message_type": "PING",
-  "payload": {
-    "status": "checking"
-  }
+    "message_id": "unique-uuid",
+    "sender_id": "peer_1",
+    "message_type": "PING",
+    "payload": {
+        "status": "checking"
+    }
 }
 ```
 
@@ -124,10 +147,9 @@ Additional message types will be introduced as peer discovery and distributed ex
 
 | Team Member | Responsibility |
 |---|---|
-| Lavanya | Networking, asynchronous communication, task scheduling and integration |
+| Lavanya | Networking, asynchronous communication, CPU/RAM resource monitoring, resource-aware task scheduling and integration |
 | Sanjana | DHT implementation and peer discovery |
 | Himanshu | Serialization and remote function execution |
-| Koteeswari | Resource monitoring, heartbeat, gossip and CLI dashboard |
 
 ## Project Goal
 
@@ -135,5 +157,6 @@ The ultimate goal of MeshWeaver is to build a decentralized, resource-aware task
 
 ---
 
-**Project:** MeshWeaver  
-**Repository:** https://github.com/lavanya25g/Team_project# Team_project
+**Project:** MeshWeaver
+
+**Repository:** https://github.com/lavanya25g/Team_project
