@@ -196,3 +196,12 @@ Further integration with remote task transmission and execution is part of the s
 *Function Serialization Module*
 
 </div>
+
+## Supported Function Types
+
+The serializer supports regular functions, lambda functions, 
+closures, recursive functions, and functions with default, 
+keyword, and variable-length arguments.
+
+Serialized functions should only be loaded from trusted 
+sources because deserialization may execute arbitrary code.
