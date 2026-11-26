@@ -2,6 +2,8 @@ import cloudpickle
 import pickle
 from typing import Any, Callable
 
+"""Function serialization utilities for the MeshWeaver project."""
+
 
 class SerializationError(Exception):
     """Raised when function serialization fails."""
