@@ -13,7 +13,6 @@ class UDPServer(asyncio.DatagramProtocol):
     def datagram_received(self, data, addr):
         try:
             message = decode_message(data)
-
             print(f"Received from {addr}: {message}")
 
             message_type = message.get("message_type")
@@ -24,11 +23,25 @@ class UDPServer(asyncio.DatagramProtocol):
                     message_type="PONG",
                     payload={"status": "alive"}
                 )
+                self.transport.sendto(encode_message(response), addr)
 
-                self.transport.sendto(
-                    encode_message(response),
-                    addr
+            elif message_type == "RESOURCE_UPDATE":
+                resource_report = message.get("payload", {})
+
+                print("\nResource Update Received:")
+                for key, value in resource_report.items():
+                    print(f"{key}: {value}")
+
+                response = create_message(
+                    sender_id="server",
+                    message_type="RESOURCE_ACK",
+                    payload={
+                        "status": "received",
+                        "node_id": resource_report.get("node_id")
+                    }
                 )
+
+                self.transport.sendto(encode_message(response), addr)
 
         except Exception as error:
             print(f"Error processing message: {error}")
@@ -38,7 +51,6 @@ class UDPServer(asyncio.DatagramProtocol):
 
 
 async def start_server(host="127.0.0.1", port=9999):
-
     loop = asyncio.get_running_loop()
 
     transport, protocol = await loop.create_datagram_endpoint(

@@ -1,6 +1,12 @@
 
 import asyncio
-from networking.protocol import create_message, encode_message, decode_message
+
+from networking.protocol import (
+    create_message,
+    encode_message,
+    decode_message
+)
+from monitoring.resource_monitor import ResourceMonitor
 
 
 class UDPClient(asyncio.DatagramProtocol):
@@ -12,10 +18,8 @@ class UDPClient(asyncio.DatagramProtocol):
 
     def connection_made(self, transport):
         self.transport = transport
-
         data = encode_message(self.message)
         self.transport.sendto(data)
-
         print("Message sent successfully")
 
     def datagram_received(self, data, addr):
@@ -69,12 +73,16 @@ async def send_message(
 
 
 async def main():
+
+    monitor = ResourceMonitor(node_id="node_01")
+    resource_report = monitor.get_resource_usage()
+
     response = await send_message(
         peer_host="127.0.0.1",
         peer_port=9999,
-        sender_id="peer_1",
-        message_type="PING",
-        payload={"status": "checking"}
+        sender_id="node_01",
+        message_type="RESOURCE_UPDATE",
+        payload=resource_report
     )
 
     print("Final response:", response)
