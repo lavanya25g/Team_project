@@ -25,6 +25,49 @@ MeshWeaver is a Peer-to-Peer (P2P) task broker designed to allow multiple comput
 - Tests for node identification.
 - Networking protocol tests.
 
+
+### CPU and RAM Resource Monitoring
+
+MeshWeaver includes a resource monitoring module that collects system resource usage using Python's `psutil` library.
+
+**Monitored information:**
+- CPU usage percentage
+- Total RAM
+- Used RAM
+- Available RAM
+- Node ID
+- UTC timestamp
+
+**UDP Integration:**
+- Resource reports are sent between nodes using `RESOURCE_UPDATE` messages.
+- The receiving UDP server displays the received resource information.
+- The server responds with a `RESOURCE_ACK` message to confirm receipt.
+
+**Run resource monitoring:**
+```bash
+py -m monitoring.resource_monitor
+```
+
+**Test resource monitoring:**
+```bash
+py -m unittest test_resource_monitor -v
+```
+
+**Test UDP resource reporting:**
+
+Start the server:
+```bash
+py -m networking.server
+```
+
+Run the client in another terminal:
+```bash
+py -m networking.client
+```
+
+**Status:** Implemented and locally tested.
+
+
 ## Project Structure
 
 ```text
