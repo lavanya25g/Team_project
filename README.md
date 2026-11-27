@@ -1,17 +1,19 @@
+
 # MeshWeaver – P2P Async Task Broker
 
-MeshWeaver is a Peer-to-Peer (P2P) task broker designed to allow multiple computers (nodes) to communicate and eventually distribute tasks across available resources.
+MeshWeaver is a Peer-to-Peer (P2P) task broker designed to allow multiple computers (nodes) to communicate and distribute tasks across available resources.
 
 ## Features Implemented in Lavanya Branch
 
 ### 1. UDP Networking
 - Asynchronous UDP server and client using Python `asyncio`.
 - JSON-based message encoding and decoding.
-- Unique message IDs.
+- Unique message IDs for message identification.
 - PING/PONG communication between peers.
 - Configurable server host and port.
+- UDP-based asynchronous message transmission and reception.
 
-### 2. Resource Monitoring
+### 2. CPU and RAM Resource Monitoring
 - CPU usage monitoring using `psutil`.
 - RAM usage monitoring.
 - Reports total, used, and available RAM in MB.
@@ -19,11 +21,20 @@ MeshWeaver is a Peer-to-Peer (P2P) task broker designed to allow multiple comput
 - Includes UTC timestamps in resource reports.
 - Configurable monitoring interval (default: 5 seconds).
 
-### 3. Testing
+### 3. Resource Monitoring and UDP Integration
+- Collects CPU and RAM usage from the local node.
+- Sends resource reports to peers using `RESOURCE_UPDATE` messages.
+- Receives and displays resource reports through the UDP server.
+- Sends `RESOURCE_ACK` responses to confirm receipt of resource reports.
+- Supports resource information exchange through the existing JSON-based message protocol.
+- Successfully tested resource-report transmission and acknowledgement using local UDP communication.
+
+### 4. Testing
 - Unit tests for resource monitoring.
 - Validation of resource report fields and values.
 - Tests for node identification.
 - Networking protocol tests.
+- Manual testing of UDP resource-report transmission and acknowledgement.
 
 
 ### CPU and RAM Resource Monitoring
@@ -114,7 +125,9 @@ Open another terminal and run:
 py -m networking.client
 ```
 
-## Running Resource Monitoring
+The client collects local CPU and RAM usage, sends a `RESOURCE_UPDATE` message to the UDP server, and receives a `RESOURCE_ACK` response.
+
+## Running Resource Monitoring Independently
 
 ```bash
 py -m monitoring.resource_monitor
@@ -138,6 +151,12 @@ Run the networking protocol tests:
 py -m unittest test_protocol -v
 ```
 
+Run all discovered unit tests:
+
+```bash
+py -m unittest discover -v
+```
+
 ## Technologies Used
 
 - Python
@@ -150,9 +169,22 @@ py -m unittest test_protocol -v
 
 ## Development Status
 
-Networking and standalone CPU/RAM resource monitoring have been implemented in the `Lavanya` branch.
+The following components have been implemented in the `Lavanya` branch:
 
-Integration of resource reports with peer communication and resource-aware task scheduling are planned next.
+- Asynchronous UDP networking.
+- JSON-based message protocol.
+- PING/PONG communication.
+- CPU and RAM resource monitoring.
+- Resource-report transmission using `RESOURCE_UPDATE`.
+- Resource-report reception through the UDP server.
+- Acknowledgement handling using `RESOURCE_ACK`.
+- Local resource-report transmission and acknowledgement testing.
+
+### Upcoming Work
+- Integration with DHT-based peer discovery.
+- Resource-aware peer selection and task scheduling.
+- Integration with remote task execution.
+- Multi-machine communication and end-to-end testing.
 
 ---
 
