@@ -1,16 +1,11 @@
 """Handle an incoming TASK_SUBMIT protocol message."""
 
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from .task_codec import (
-    TaskPayloadError,
-    decode_task,
-    encode_result,
-    sign_payload,
-    verify_payload,
-)
+from .task_codec import decode_task, encode_result, sign_payload, verify_payload
 from .task_executor import execute_task, TaskExecutionError
+from .task_results import TaskResultTracker
 
 
 def _message(sender_id: str, message_type: str, payload: Dict[str, Any]) -> dict:
@@ -22,8 +17,13 @@ def _message(sender_id: str, message_type: str, payload: Dict[str, Any]) -> dict
     }
 
 
-def _error_response(task_id: str, error_type: str, error_message: str,
-                    secret: str, receiver_id: str) -> dict:
+def _error_response(
+    task_id: str,
+    error_type: str,
+    error_message: str,
+    secret: str,
+    receiver_id: str,
+) -> dict:
     payload = {
         "task_id": task_id,
         "status": "FAILED",
@@ -34,17 +34,27 @@ def _error_response(task_id: str, error_type: str, error_message: str,
     return _message(receiver_id, "TASK_ERROR", payload)
 
 
+def _public_error_details(error: Exception) -> tuple:
+    """Expose the original task exception when execute_task wrapped it."""
+    if isinstance(error, TaskExecutionError) and error.__cause__ is not None:
+        cause = error.__cause__
+        return type(cause).__name__, str(cause)
+    return type(error).__name__, str(error)
+
+
 def handle_task_message(
     message: dict,
     shared_secret: str,
     receiver_id: str = "meshweaver-worker",
+    result_tracker: Optional[TaskResultTracker] = None,
 ) -> dict:
-    """Authenticate, deserialize, execute and respond to a TASK_SUBMIT message.
+    """Authenticate, execute, track and respond to a TASK_SUBMIT message.
 
-    The sender must HMAC-sign the complete payload (excluding the signature
-    field). The signature is checked BEFORE cloudpickle deserialization.
+    HMAC verification happens before cloudpickle deserialization. When a
+    result tracker is supplied, the task lifecycle is recorded locally.
     """
     task_id = "unknown"
+    registered = False
     try:
         if not isinstance(message, dict):
             raise ValueError("Message must be a dictionary.")
@@ -59,31 +69,42 @@ def handle_task_message(
         if not verify_payload(payload, shared_secret):
             raise PermissionError("Task payload authentication failed.")
 
-        # Do not call decode_task until the HMAC has been verified.
+        if result_tracker is not None:
+            result_tracker.submit(task_id)
+            registered = True
+            result_tracker.mark_running(task_id)
+
+        # Never deserialize a task until its HMAC has been verified.
         function, args, kwargs = decode_task(payload.get("task_data"))
         result = execute_task(function, args, kwargs)
+        result_data = encode_result(result)
+
         response_payload = {
             "task_id": task_id,
             "status": "SUCCESS",
-            "result_data": encode_result(result),
+            "result_data": result_data,
         }
         response_payload["signature"] = sign_payload(response_payload, shared_secret)
+
+        if result_tracker is not None:
+            result_tracker.mark_success(task_id, result_data)
+
         return _message(receiver_id, "TASK_RESULT", response_payload)
 
-    except (TaskPayloadError, TaskExecutionError, TypeError, ValueError,
-            PermissionError) as error:
-        return _error_response(
-            task_id,
-            type(error).__name__,
-            str(error),
-            shared_secret,
-            receiver_id,
-        )
     except Exception as error:
+        error_type, error_message = _public_error_details(error)
+        if result_tracker is not None and registered:
+            try:
+                current = result_tracker.get(task_id)
+                if current["status"] in {"SUBMITTED", "RUNNING"}:
+                    result_tracker.mark_failed(task_id, error_type, error_message)
+            except Exception:
+                # Preserve the protocol error response even if tracking fails.
+                pass
         return _error_response(
             task_id,
-            type(error).__name__,
-            "Unexpected task handler error.",
+            error_type,
+            error_message,
             shared_secret,
             receiver_id,
         )

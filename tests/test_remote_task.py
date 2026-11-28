@@ -1,7 +1,7 @@
 import unittest
+
 from execution.remote_task import submit_task, RemoteTaskError
 from execution.task_handler import handle_task_message
-from execution.task_codec import decode_result
 
 SECRET = "meshweaver-demo-secret-2026"
 
@@ -32,18 +32,29 @@ class TestRemoteTask(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result, 42)
 
-    async def test_remote_execution_error(self):
-        with self.assertRaises(RemoteTaskError):
+    async def test_remote_execution_error_contains_details(self):
+        with self.assertRaises(RemoteTaskError) as raised:
             await submit_task(
                 "127.0.0.1", 9999, "peer-a", fail,
                 shared_secret=SECRET,
                 send_message_func=self.fake_send_message,
             )
+        self.assertEqual(raised.exception.error_type, "RuntimeError")
+        self.assertEqual(raised.exception.error_message, "demo failure")
+        self.assertTrue(raised.exception.task_id)
 
     async def test_invalid_port(self):
         with self.assertRaises(ValueError):
             await submit_task(
                 "127.0.0.1", 70000, "peer-a", add,
+                args=(1, 2), shared_secret=SECRET,
+                send_message_func=self.fake_send_message,
+            )
+
+    async def test_boolean_port_rejected(self):
+        with self.assertRaises(ValueError):
+            await submit_task(
+                "127.0.0.1", True, "peer-a", add,
                 args=(1, 2), shared_secret=SECRET,
                 send_message_func=self.fake_send_message,
             )

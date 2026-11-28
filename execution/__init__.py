@@ -13,6 +13,7 @@ from .task_codec import (
 from .task_handler import handle_task_message
 from .remote_task import submit_task, RemoteTaskError, RemoteTaskProtocolError
 from .peer_resolver import resolve_peer_endpoint, PeerResolutionError
+from .task_results import TaskStatus, TaskStateError, TaskResultTracker
 from .task_udp_server import UDPTaskServer, start_task_server
 
 __all__ = [
@@ -31,6 +32,9 @@ __all__ = [
     "RemoteTaskProtocolError",
     "resolve_peer_endpoint",
     "PeerResolutionError",
+    "TaskStatus",
+    "TaskStateError",
+    "TaskResultTracker",
     "UDPTaskServer",
     "start_task_server",
 ]

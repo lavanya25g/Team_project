@@ -1,5 +1,4 @@
 import asyncio
-import os
 import unittest
 
 from execution.remote_task import submit_task
@@ -25,7 +24,7 @@ class TestUDPTaskEndToEnd(unittest.IsolatedAsyncioTestCase):
         self.transport.close()
         await asyncio.sleep(0)
 
-    async def test_real_udp_remote_execution(self):
+    async def test_real_udp_remote_execution_and_result_tracking(self):
         result = await submit_task(
             peer_host=self.host,
             peer_port=self.port,
@@ -35,6 +34,9 @@ class TestUDPTaskEndToEnd(unittest.IsolatedAsyncioTestCase):
             shared_secret=SECRET,
         )
         self.assertEqual(result, 42)
+        records = self.protocol.result_tracker.list_records()
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["status"], "SUCCESS")
 
 
 if __name__ == "__main__":

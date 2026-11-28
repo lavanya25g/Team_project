@@ -57,7 +57,13 @@ async def _fallback_send_message(
 
 
 class RemoteTaskError(RuntimeError):
-    """Raised when the remote peer reports task execution failure."""
+    """Raised when the remote peer reports a task execution failure."""
+
+    def __init__(self, task_id: str, error_type: str, error_message: str):
+        self.task_id = task_id
+        self.error_type = error_type
+        self.error_message = error_message
+        super().__init__(f"{error_type}: {error_message}")
 
 
 class RemoteTaskProtocolError(RuntimeError):
@@ -76,13 +82,17 @@ async def submit_task(
 ) -> Any:
     """Submit a task over the existing networking client's send_message API.
 
-    ``send_message_func`` is injectable for tests. In the integrated app pass
-    ``networking.client.send_message``. This keeps execution tests independent
-    of the networking branch until the team merges that code.
+    The send_message_func argument is injectable for tests. In the integrated
+    app pass networking.client.send_message. This keeps execution tests
+    independent of the networking branch until that package is merged.
     """
     if not isinstance(peer_host, str) or not peer_host:
         raise ValueError("Peer host must be a non-empty string.")
-    if not isinstance(peer_port, int) or not 1 <= peer_port <= 65535:
+    if (
+        not isinstance(peer_port, int)
+        or isinstance(peer_port, bool)
+        or not 1 <= peer_port <= 65535
+    ):
         raise ValueError("Peer port must be between 1 and 65535.")
     if not isinstance(sender_id, str) or not sender_id:
         raise ValueError("Sender ID must be a non-empty string.")
@@ -90,6 +100,9 @@ async def submit_task(
         raise ValueError("Shared secret must contain at least 16 characters.")
     if kwargs is None:
         kwargs = {}
+    if not isinstance(kwargs, dict):
+        raise TypeError("kwargs must be a dictionary.")
+
     if send_message_func is None:
         try:
             from networking.client import send_message
@@ -135,7 +148,9 @@ async def submit_task(
     if message_type == "TASK_ERROR":
         error_type = response_payload.get("error_type", "RemoteTaskError")
         error_message = response_payload.get("error_message", "Remote execution failed.")
-        raise RemoteTaskError(f"{error_type}: {error_message}")
+        if not isinstance(error_type, str) or not isinstance(error_message, str):
+            raise RemoteTaskProtocolError("Remote error details are invalid.")
+        raise RemoteTaskError(task_id, error_type, error_message)
 
     if response_payload.get("status") != "SUCCESS":
         raise RemoteTaskProtocolError("TASK_RESULT did not contain SUCCESS status.")
